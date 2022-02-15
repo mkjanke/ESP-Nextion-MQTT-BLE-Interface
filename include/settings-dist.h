@@ -1,0 +1,23 @@
+#ifndef SETTINGS_H
+#define SETTINGS_H
+
+#define WIFI_SSID "----"            //Change me
+#define WIFI_PASSWORD "------"      //Change me
+
+#define HEARTBEAT 1000L             // Sensor and WiFi loop delay (ms)
+#define DEVICE_NAME "ESP-Display"   //Cnange me
+
+//MQTT broker
+#define MQTT_PORT 1883
+
+// Nextion Serial pins
+#define RXD2 16
+#define TXD2 17
+
+// BlueTooth UUID's
+#define SERVICE_UUID        "611f9238-3915-11ec-8d3d-0242ac130003"  // 9238
+#define MESSAGE_UUID        "6bcbec08-7fbb-11ec-a8a3-0242ac120002"  // 0002 String - Nextion Command
+#define EVENT_UUID          "6bcbee60-7fbb-11ec-a8a3-0242ac120002"
+#define UPTIME_UUID         "611f96f2-3915-11ec-8d3d-0242ac130003"  // 96f2 String
+
+#endif //SETTINS_H
