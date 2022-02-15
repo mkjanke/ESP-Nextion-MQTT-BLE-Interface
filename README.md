@@ -2,6 +2,11 @@
 
 An attempt to create and interface that allows updating a Nextion display via either MQTT or BLE.
 
+Uses:
+
+* TinyMqtt https://github.com/hsaturn/TinyMqtt
+* NimBLE
+
 Note: the TinyMQTT library currently has a memory leak when MQTT client connections are closed. Use with caution!
 
 The ESP32 code in this repository includes 
