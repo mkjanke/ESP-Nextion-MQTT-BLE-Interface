@@ -1,3 +1,4 @@
+#include "settings.h"
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <WiFi.h>
@@ -6,7 +7,6 @@
 #include "bleInterface.h"
 #include "esp_system.h"
 #include "nextionInterface.h"
-#include "settings.h"
 
 void uptime();
 
@@ -50,11 +50,6 @@ void setup() {
   Serial.begin(115200);
   Serial << DEVICE_NAME << " Is Now Woke!" << endl;
 
-  // Initialize Nextion interface
-  vTaskDelay(100 / portTICK_PERIOD_MS);
-  Serial << "Starting myNex" << endl;
-  myNex.begin(115200);
-
   vTaskDelay(100 / portTICK_PERIOD_MS);
   Serial << "Starting BlueTooth" << endl;
   bleIF.begin();
@@ -70,6 +65,11 @@ void setup() {
   vTaskDelay(500 / portTICK_PERIOD_MS);
   mqttBroker.begin();
   Serial << "Broker ready : " << WiFi.localIP() << " on port " << MQTT_PORT << endl;
+
+  // Initialize Nextion interface
+  vTaskDelay(100 / portTICK_PERIOD_MS);
+  Serial << "Starting myNex" << endl;
+  myNex.begin(115200);
 
   mqttNexClient.setCallback(onPublishEvent);
   mqttNexClient.subscribe(myNex.eventTopic);
@@ -135,13 +135,14 @@ void loop() {
 
 void handleNextion(void* parameter) {
   // Events we care about
-  const std::string filter = "\x65\x66\x67\x68\x70\x71\x86\x87";
+  const char filter[] = {'\x65','\x66','\x67','\x68','\x70','\x71','\x86','\x87'};
 
   std::string _bytes;       //Raw bytes returned from Nextion, including FF terminaters
    _bytes.reserve(48);
   std::string _hexString;   //_bytes converted to space delimited ASCII chars in std::string
                             // I.E. 1A B4 E4 FF FF FF
   char _x[] = {};
+  std::size_t _found;
 
   vTaskDelay(100 / portTICK_PERIOD_MS);
 
@@ -150,6 +151,7 @@ void handleNextion(void* parameter) {
 
     if (_bytes.length() > 0) _bytes.clear();
     if (_hexString.length() > 0) _hexString.clear();
+    _found= 0;
 
     int _len = myNex.listen(_bytes, 48);
     if (_len) {
@@ -162,15 +164,25 @@ void handleNextion(void* parameter) {
 
         Serial << "handleNextion returned: " << _hexString.c_str() << endl;
 
-        // If we see interesting event from Nextion, forward to BLE interface and to MQTT.
-        mqttNexClient.publish(myNex.eventTopic, _hexString);
+        // If we see interesting event from Nextion, forward to BLE interface and to MQTT.        
+        for (size_t i = 0; i < sizeof filter; i++){
+          if (_bytes[0] == filter[i]){
+            mqttNexClient.publish(myNex.eventTopic, _hexString);
+            bleIF.writeEvent(_hexString);
 
-        std::size_t _found = _bytes.find_first_of(filter);
-        if (_found != std::string::npos) {
-          bleIF.writeEvent(_hexString);
-          std::string t = myNex.eventTopic + "/" + _hexString.substr(0,2);
-          mqttNexClient.publish(t, _hexString);
-        }
+            if (_bytes[0] == '\x70'){
+              bleIF.writeMessage(_hexString);
+            }
+            if (_bytes[0] == '\x71'){
+              bleIF.writeMessage(_hexString);
+            }
+            // Forward certain events as subtopics
+            std::string t = myNex.eventTopic + "/" + _hexString.substr(0,2);
+            mqttNexClient.publish(t, _hexString);
+
+            }
+        };
+
 
       } else {
         Serial << "Short read" << endl;
@@ -219,8 +231,35 @@ void heartBeat(void* parameter) {
 
     uptime();
     mqttNexClient.publish(myNex.uptimeTopic, uptimeBuffer);
+
     myNex.writeStr("page0.upTxt.txt", uptimeBuffer);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
     myNex.writeNum("heartbeat", 1);
+
+    char buffer[37];
+    snprintf(buffer, sizeof(buffer), "N:%ib\\rH:%ib\\rW:%ib\\rH:%i", 
+           uxTaskGetStackHighWaterMark(xhandleNextionHandle),
+           uxTaskGetStackHighWaterMark(xheartBeatHandle),
+           uxTaskGetStackHighWaterMark(xcheckWiFiHandle),
+           esp_get_minimum_free_heap_size());
+
+    myNex.writeStr("page0.ESP.txt", buffer);
+    
+    snprintf(buffer, sizeof(buffer), "%i", 
+           esp_get_minimum_free_heap_size());
+    mqttNexClient.publish("display/ESP/fHeap", buffer);
+
+    snprintf(buffer, sizeof(buffer), "%i", 
+           uxTaskGetStackHighWaterMark(xhandleNextionHandle));
+    mqttNexClient.publish("display/ESP/nStack", buffer);
+
+    snprintf(buffer, sizeof(buffer), "%i", 
+           uxTaskGetStackHighWaterMark(xheartBeatHandle));
+    mqttNexClient.publish("display/ESP/hStack", buffer);
+    
+    snprintf(buffer, sizeof(buffer), "%i", 
+           uxTaskGetStackHighWaterMark(xcheckWiFiHandle));
+    mqttNexClient.publish("display/ESP/wStack", buffer);
 
     bleIF.updateUptime(uptimeBuffer);
 

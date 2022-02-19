@@ -11,6 +11,7 @@ class bleInterface {
   void begin();
   void updateUptime(char *);
 
+  void writeMessage(std::string);
   void writeMessage(char *);
   void writeMessage(uint8_t *, uint8_t);
   void writeEvent(std::string);
