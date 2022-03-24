@@ -231,7 +231,7 @@ void heartBeat(void* parameter) {
     uptime();
     mqttNexClient.publish(myNex.uptimeTopic, uptimeBuffer);
 
-    myNex.writeStr("page0.upTxt.txt", uptimeBuffer);
+    myNex.writeStr(NEXT_UPTIME_WIDGET, uptimeBuffer);
     vTaskDelay(100 / portTICK_PERIOD_MS);
     myNex.writeNum("heartbeat", 1);
 
@@ -242,22 +242,22 @@ void heartBeat(void* parameter) {
              uxTaskGetStackHighWaterMark(xcheckWiFiHandle),
              esp_get_minimum_free_heap_size());
 
-    myNex.writeStr("page0.ESP.txt", buffer);
+    myNex.writeStr(NEXT_ESPOUT_WIDGET, buffer);
 
     snprintf(buffer, sizeof(buffer), "%i", esp_get_minimum_free_heap_size());
-    mqttNexClient.publish("display/ESP/fHeap", buffer);
+    mqttNexClient.publish(NEXT_ESP_FREEHEAP, buffer);
 
     snprintf(buffer, sizeof(buffer), "%i",
              uxTaskGetStackHighWaterMark(xhandleNextionHandle));
-    mqttNexClient.publish("display/ESP/nStack", buffer);
+    mqttNexClient.publish(NEXT_ESP_NSTACK, buffer);
 
     snprintf(buffer, sizeof(buffer), "%i",
              uxTaskGetStackHighWaterMark(xheartBeatHandle));
-    mqttNexClient.publish("display/ESP/hStack", buffer);
+    mqttNexClient.publish(NEXT_ESP_HSTACK, buffer);
 
     snprintf(buffer, sizeof(buffer), "%i",
              uxTaskGetStackHighWaterMark(xcheckWiFiHandle));
-    mqttNexClient.publish("display/ESP/wStack", buffer);
+    mqttNexClient.publish(NEXT_ESP_WSTACK, buffer);
 
     bleIF.updateUptime(uptimeBuffer);
 

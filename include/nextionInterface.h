@@ -1,6 +1,8 @@
 #ifndef NEXTIONINTERFACE_H
 #define NEXTIONINTERFACE_H
 
+#include "settings.h"
+
 SemaphoreHandle_t xSerialWriteSemaphore =
     NULL;  // Avoid smashing Nextion with overlapping writes
 SemaphoreHandle_t xSerialReadSemaphore =
@@ -13,9 +15,9 @@ class myNextionInterface {
 
  public:
   bool respondToBLE = false;
-  const std::string eventTopic = "display/event";
-  const std::string uptimeTopic = "display/uptime";
-  const std::string cmdTopic = "display/command";
+  const std::string eventTopic = NEXT_COMMAND;
+  const std::string uptimeTopic = NEXT_UPTIME;
+  const std::string cmdTopic = NEXT_EVENT;
   
   myNextionInterface(HardwareSerial& serial) {
     /* Initialize semaphores
