@@ -101,3 +101,9 @@ Nextions messages returned via the event MQTT topic or EVENT_UUID will be format
 +--------------------+
 
 ```
+# To DO
+
+* Clean up mismatch of char *, String, and std::string
+* Experiment with alternate MQTT broker
+* Debug misc serial issues (Nextion hangs)
+* Modify heartbeat to detect failed ESP32 or failed external MQTT client

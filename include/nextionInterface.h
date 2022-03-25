@@ -15,9 +15,9 @@ class myNextionInterface {
 
  public:
   bool respondToBLE = false;
-  const std::string eventTopic = NEXT_COMMAND;
+  const std::string eventTopic = NEXT_EVENT;
   const std::string uptimeTopic = NEXT_UPTIME;
-  const std::string cmdTopic = NEXT_EVENT;
+  const std::string cmdTopic = NEXT_COMMAND;
   
   myNextionInterface(HardwareSerial& serial) {
     /* Initialize semaphores
