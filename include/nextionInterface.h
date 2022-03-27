@@ -2,11 +2,13 @@
 #define NEXTIONINTERFACE_H
 
 #include "settings.h"
+#include "log.h"
 
-SemaphoreHandle_t xSerialWriteSemaphore =
-    NULL;  // Avoid smashing Nextion with overlapping writes
-SemaphoreHandle_t xSerialReadSemaphore =
-    NULL;  // Avoid smashing app with overlapping reads
+// Avoid smashing Nextion with overlapping reads and writes
+SemaphoreHandle_t xSerialWriteSemaphore =  NULL;
+SemaphoreHandle_t xSerialReadSemaphore = NULL;
+
+extern SemaphoreHandle_t xLogSemaphore;
 
 class myNextionInterface {
  private:
@@ -41,6 +43,7 @@ class myNextionInterface {
     flushReads();
     //Reset Nextion
     delay(400);
+    sLog.send("Resetting Display");
     writeCmd("rest");
   }
 
@@ -57,6 +60,8 @@ class myNextionInterface {
 
   // Thread safe writes (I think...)
   void writeNum(String _componentName, uint32_t _val) {
+    sLog.send((String)"writeNum: " + _componentName + ", " + _val);
+
     if (xSemaphoreTake(xSerialWriteSemaphore, 100 / portTICK_PERIOD_MS) ==
         pdTRUE) {
       _serial->print(_componentName);
@@ -65,11 +70,13 @@ class myNextionInterface {
       _serial->print(_cmdTerminator);
       xSemaphoreGive(xSerialWriteSemaphore);
     } else {
-      Serial << "writeNum Semaphore fail" << endl;
+      sLog.send("writeNum Semaphore fail");
     }
   }
 
   void writeStr(String command, String txt) {
+    sLog.send("writeStr: " + command + ", " + txt);
+
     if (xSemaphoreTake(xSerialWriteSemaphore, 100 / portTICK_PERIOD_MS) ==
         pdTRUE) {
       _serial->print(command);
@@ -79,18 +86,20 @@ class myNextionInterface {
       _serial->print(_cmdTerminator);
       xSemaphoreGive(xSerialWriteSemaphore);
     } else {
-      Serial << "writeStr Semaphore fail" << endl;
+      sLog.send("writeNum Semaphore fail");
     }
   }
 
   void writeCmd(String command) {
+    sLog.send("writeCmd: " + command);
+
     if (xSemaphoreTake(xSerialWriteSemaphore, 1000 / portTICK_PERIOD_MS) ==
         pdTRUE) {
       _serial->print(command);
       _serial->print(_cmdTerminator);
       xSemaphoreGive(xSerialWriteSemaphore);
     } else {
-      Serial << "writeStr Semaphore fail" << endl;
+      sLog.send("writeCmd Semaphore fail");
     }
   }
 
@@ -118,7 +127,7 @@ class myNextionInterface {
       xSemaphoreGive(xSerialReadSemaphore);
       return false;
     } else {
-      Serial << "listen() read Semaphore fail" << endl;
+      sLog.send("listen() read Semaphore fail");
       return false;
     }
   }

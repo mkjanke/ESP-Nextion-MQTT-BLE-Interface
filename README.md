@@ -66,7 +66,7 @@ Nextions messages returned via the event MQTT topic or EVENT_UUID will be format
 
 ```
 
-###BLE client updates BLE Characteristic
+### BLE client updates BLE Characteristic
 
 ```
 +-------------------------+        +------------------------+

@@ -8,6 +8,8 @@
 #include "nextionInterface.h"
 #include "settings.h"
 
+#include "log.h"
+
 void uptime();
 
 void heartBeat(void*);
@@ -26,7 +28,7 @@ bool bleInterface::messageWaiting = false;
 
 WiFiServer server(80);
 
-myNextionInterface myNex(Serial2);
+myNextionInterface myNex(Serial);
 
 TaskHandle_t xheartBeatHandle = NULL;  // Task handles
 TaskHandle_t xhandleNextionHandle = NULL;
@@ -36,40 +38,45 @@ MqttBroker mqttBroker(MQTT_PORT);
 MqttClient mqttNexClient(&mqttBroker);
 
 // MQTT client callback
-void onPublishEvent(const MqttClient* /* srce */, const Topic& topic,
-                    const char* payload, size_t /* length */) {
-  Serial << "--> mqttNexClient received: " << topic.c_str() << ": " << payload
-         << endl;
+void onPublishEvent(const MqttClient*, 
+                    const Topic& topic,
+                    const char* payload, size_t) {
+  sLog.send((String)"--> mqttNexClient received: " + topic.c_str() + " : " + payload);
+
   if (topic.matches(myNex.cmdTopic)) {
-    Serial << "Matched " << myNex.cmdTopic << ": " << payload << endl;
     myNex.writeCmd(payload);
   }
 }
 
 void setup() {
-  Serial.begin(115200);
-  Serial << DEVICE_NAME << " Is Now Woke!" << endl;
+  // Initialize WiFi
+  vTaskDelay(500 / portTICK_PERIOD_MS);
+  WiFi.begin(ssid, password);
+  WiFi.setHostname(DEVICE_NAME);
+  WiFi.setAutoReconnect(true);
+
+  // Initialize OTA Update libraries
+  ArduinoOTA.setHostname(DEVICE_NAME);
+  ArduinoOTA.onStart([]() { bleIF.stopAdvertising(); });
+  ArduinoOTA.begin();
+
+  sLog.init();
+  vTaskDelay(2500 / portTICK_PERIOD_MS);
+  sLog.send((String)DEVICE_NAME + " is now Woke");
 
   vTaskDelay(100 / portTICK_PERIOD_MS);
-  Serial << "Starting BlueTooth" << endl;
+  sLog.send("Starting BlueTooth");
   bleIF.begin();
   bleIF.updateUptime(uptimeBuffer);
 
-  // Initialize WiFi
-  vTaskDelay(500 / portTICK_PERIOD_MS);
-  Serial << "Starting WiFi" << endl;
-  WiFi.begin(ssid, password);
-  WiFi.setHostname(DEVICE_NAME);
-
   // Initialize MQTT broker
-  vTaskDelay(500 / portTICK_PERIOD_MS);
+  vTaskDelay(100 / portTICK_PERIOD_MS);
+  sLog.send("Starting MQTT Broker");
   mqttBroker.begin();
-  Serial << "Broker ready : " << WiFi.localIP() << " on port " << MQTT_PORT
-         << endl;
 
   // Initialize Nextion interface
   vTaskDelay(100 / portTICK_PERIOD_MS);
-  Serial << "Starting myNex" << endl;
+  sLog.send("Starting myNex");
   myNex.begin(115200);
 
   mqttNexClient.setCallback(onPublishEvent);
@@ -77,15 +84,10 @@ void setup() {
   mqttNexClient.subscribe(myNex.cmdTopic);
   mqttNexClient.subscribe(myNex.uptimeTopic);
 
-  // Initialize OTA Update libraries
-  ArduinoOTA.setHostname(DEVICE_NAME);
-  ArduinoOTA.onStart([]() { bleIF.stopAdvertising(); });
-  ArduinoOTA.begin();
-
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  vTaskDelay(100 / portTICK_PERIOD_MS);
   // Start web server
   server.begin();
-  Serial << "Web Server started." << endl;
+  sLog.send("Web Server started.");
 
   // Start background tasks - Wifi, Nextion & heartbeat
   xTaskCreate(checkWiFi, "Check WiFi", 2000, NULL, 1, &xcheckWiFiHandle);
@@ -106,25 +108,25 @@ void loop() {
 
   WiFiClient client = server.available();  // Listen for incoming clients
   if (client) {
-    //    digitalWrite(LED_OUT,HIGH);
-    Serial << "Connect from " << client.remoteIP() << endl;
+    sLog.send((String)"Connect from " + client.remoteIP());
     outputWebPage(client);  // If a new client connects,
     client.flush();
     client.stop();
-    //    digitalWrite(LED_OUT,LOW);
   }
+
+  sLog.loop();
 
   delay(100);
   if (loopct > 100) {
     loopct = 0;
     // mqttBroker.dump();
 
-    Serial << "Task HW: N: "
-           << uxTaskGetStackHighWaterMark(xhandleNextionHandle)
-           << "b H: " << uxTaskGetStackHighWaterMark(xheartBeatHandle)
-           << "b W: " << uxTaskGetStackHighWaterMark(xcheckWiFiHandle) << "b"
-           << endl;
-    Serial << "Min Free Heap: " << esp_get_minimum_free_heap_size() << endl;
+    // Serial << "Task HW: N: "
+    //        << uxTaskGetStackHighWaterMark(xhandleNextionHandle)
+    //        << "b H: " << uxTaskGetStackHighWaterMark(xheartBeatHandle)
+    //        << "b W: " << uxTaskGetStackHighWaterMark(xcheckWiFiHandle) << "b"
+    //        << endl;
+    // Serial << "Min Free Heap: " << esp_get_minimum_free_heap_size() << endl;
   }
 }  // loop()
 
@@ -136,7 +138,8 @@ void loop() {
 void handleNextion(void* parameter) {
   // Events we care about
   const char filter[] = {'\x65', '\x66', '\x67', '\x68',
-                         '\x70', '\x71', '\x86', '\x87'};
+                         '\x70', '\x71', '\x86', '\x87',
+                         '\xAA'};
 
   std::string
       _bytes;  // Raw bytes returned from Nextion, including FF terminaters
@@ -150,7 +153,6 @@ void handleNextion(void* parameter) {
 
   for (;;) {  // ever
     // Check for incoming event from Nextion
-
     if (_bytes.length() > 0) _bytes.clear();
     if (_hexString.length() > 0) _hexString.clear();
 
@@ -162,8 +164,7 @@ void handleNextion(void* parameter) {
           sprintf(_x, "%02X ", item);
           _hexString += _x;
         }
-
-        Serial << "handleNextion returned: " << _hexString.c_str() << endl;
+        sLog.send((String)"handleNextion returned: " + _hexString.c_str());
 
         // If we see interesting event from Nextion, forward to BLE interface
         // and to MQTT.
@@ -184,15 +185,13 @@ void handleNextion(void* parameter) {
           }
         }
       } else {
-        Serial << "Short read" << endl;
+        sLog.send("handleNextion: Short read");
         myNex.flushReads();
       }
     }
     // Check for incoming message from BLE interface
     // If we see message from BLE, forward to Nextion via MQTT
     if (bleInterface::messageWaiting) {
-      //      Serial.println(bleIF.msgBuffer);
-      Serial << "bleIF says: " << bleIF.msgBuffer << endl;
       bleInterface::messageWaiting = false;
       mqttNexClient.publish(myNex.cmdTopic, bleIF.msgBuffer);
     }
@@ -220,7 +219,6 @@ void uptime() {
 
 // Heartbeat task - update uptime buffer
 //                - update heartbeat field on Nextion
-//
 void heartBeat(void* parameter) {
   uint8_t loopct = 0;
 
@@ -229,6 +227,8 @@ void heartBeat(void* parameter) {
     vTaskDelay(10000 / portTICK_PERIOD_MS);
 
     uptime();
+    sLog.send(uptimeBuffer);
+
     mqttNexClient.publish(myNex.uptimeTopic, uptimeBuffer);
 
     myNex.writeStr(NEXT_UPTIME_WIDGET, uptimeBuffer);
@@ -275,10 +275,10 @@ void checkWiFi(void* parameter) {
   for (;;) {  // infinite loop
     vTaskDelay(HEARTBEAT * 30 / portTICK_PERIOD_MS);
     if (WiFi.status() == WL_CONNECTED) {
-      Serial << "My IP: " << WiFi.localIP() << endl;
+      sLog.send((String)"My IP: " + WiFi.localIP().toString() + " DNS: " + WiFi.dnsIP().toString());
     } else {
       vTaskDelay(HEARTBEAT * 60 / portTICK_PERIOD_MS);
-      Serial << "No WiFi Found...reconnecting" << endl;
+      sLog.send("No WiFi Found...reconnecting");
       WiFi.reconnect();  // Try to reconnect to the server
     }
   }
