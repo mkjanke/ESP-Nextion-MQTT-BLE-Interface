@@ -11,6 +11,7 @@ BLEAdvertising* pAdvertising;
 BLECharacteristic* message_BLEC;
 BLECharacteristic* event_BLEC;
 BLECharacteristic* uptimeBLEC;
+BLECharacteristic* statusBLEC;
 
 class MyServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* pServer) { bleInterface::deviceConnected = true; };
@@ -47,37 +48,44 @@ class stringCallback : public BLECharacteristicCallbacks {
   }
 };
 
-void bleInterface::updateUptime(char* buff) {
+// Uptime
+void bleInterface::updateUptime(const char* buff) {
   uptimeBLEC->setValue((std::string)buff);
   uptimeBLEC->notify();
 }
 
+// Device Status
+void bleInterface::updateStatus(const char* buff) {
+  statusBLEC->setValue((std::string)buff);
+  statusBLEC->notify();
+}
+
 // Write message from Nextion
 //    back to BLE characteristic
-void bleInterface::writeMessage(std::string buff) {
+void bleInterface::writeMessage(std::string & buff) {
   message_BLEC->setValue(buff);
   message_BLEC->notify();
 }
-void bleInterface::writeMessage(char* buff) {
+void bleInterface::writeMessage(const char* buff) {
   message_BLEC->setValue((std::string)buff);
   message_BLEC->notify();
 }
-void bleInterface::writeMessage(uint8_t* buff, uint8_t len) {
+void bleInterface::writeMessage(const uint8_t* buff, uint8_t len) {
   message_BLEC->setValue(buff, len);
   message_BLEC->notify();
 }
 
 // Write event from Nextion
 //    back to BLE characteristic
-void bleInterface::writeEvent(std::string buff) {
+void bleInterface::writeEvent(std::string & buff) {
   event_BLEC->setValue(buff);
   event_BLEC->notify();
 }
-void bleInterface::writeEvent(char* buff) {
+void bleInterface::writeEvent(const char* buff) {
   event_BLEC->setValue((std::string)buff);
   event_BLEC->notify();
 }
-void bleInterface::writeEvent(uint8_t* buff, uint8_t len) {
+void bleInterface::writeEvent(const uint8_t* buff, uint8_t len) {
   event_BLEC->setValue(buff, len);
   event_BLEC->notify();
 }
@@ -119,6 +127,14 @@ void bleInterface::begin() {
   uptimeBLEDesc =
       uptimeBLEC->createDescriptor("2901", NIMBLE_PROPERTY::READ, 25);
   uptimeBLEDesc->setValue("Device Uptime");
+
+  // Characteristic to hold misc ESP32 Status messages
+  statusBLEC = pService->createCharacteristic(
+      STATUS_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+  NimBLEDescriptor* statusBLEDesc;
+  statusBLEDesc =
+      statusBLEC->createDescriptor("2901", NIMBLE_PROPERTY::READ, 25);
+  statusBLEDesc->setValue("Device Status");
 
   pService->start();
   pAdvertising = pServer->getAdvertising();

@@ -60,23 +60,22 @@ void setup() {
   ArduinoOTA.onStart([]() { bleIF.stopAdvertising(); });
   ArduinoOTA.begin();
 
-  sLog.init();
   vTaskDelay(2500 / portTICK_PERIOD_MS);
-  sLog.send((String)DEVICE_NAME + " is now Woke");
+  sLog.init();
+  sLog.send((String)DEVICE_NAME + " is Woke");
 
-  vTaskDelay(100 / portTICK_PERIOD_MS);
   sLog.send("Starting BlueTooth");
   bleIF.begin();
   bleIF.updateUptime(uptimeBuffer);
 
   // Initialize MQTT broker
   vTaskDelay(100 / portTICK_PERIOD_MS);
-  sLog.send("Starting MQTT Broker");
+  sLog.send("Starting MQTT Broker", true);
   mqttBroker.begin();
 
   // Initialize Nextion interface
   vTaskDelay(100 / portTICK_PERIOD_MS);
-  sLog.send("Starting myNex");
+  sLog.send("Starting myNex", true);
   myNex.begin(115200);
 
   mqttNexClient.setCallback(onPublishEvent);
@@ -87,12 +86,11 @@ void setup() {
   vTaskDelay(100 / portTICK_PERIOD_MS);
   // Start web server
   server.begin();
-  sLog.send("Web Server started.");
+  sLog.send("Web Server started.", true);
 
   // Start background tasks - Wifi, Nextion & heartbeat
-  xTaskCreate(checkWiFi, "Check WiFi", 2000, NULL, 1, &xcheckWiFiHandle);
-  xTaskCreate(handleNextion, "Nextion Handler", 3000, NULL, 6,
-              &xhandleNextionHandle);
+  xTaskCreate(checkWiFi, "Check WiFi", 3000, NULL, 1, &xcheckWiFiHandle);
+  xTaskCreate(handleNextion, "Nextion Handler", 3000, NULL, 6, &xhandleNextionHandle);
   xTaskCreate(heartBeat, "Heartbeat", 3000, NULL, 1, &xheartBeatHandle);
 }
 
@@ -108,7 +106,7 @@ void loop() {
 
   WiFiClient client = server.available();  // Listen for incoming clients
   if (client) {
-    sLog.send((String)"Connect from " + client.remoteIP());
+    sLog.send((String)"Connect from " + client.remoteIP(), true);
     outputWebPage(client);  // If a new client connects,
     client.flush();
     client.stop();
@@ -272,14 +270,18 @@ void heartBeat(void* parameter) {
 // check Wifi connection, attempt reconnect
 //
 void checkWiFi(void* parameter) {
+  String status;
+  status.reserve(40);
   for (;;) {  // infinite loop
     vTaskDelay(HEARTBEAT * 30 / portTICK_PERIOD_MS);
     if (WiFi.status() == WL_CONNECTED) {
-      sLog.send((String)"My IP: " + WiFi.localIP().toString() + " DNS: " + WiFi.dnsIP().toString());
+      status=(String)"IP: " + WiFi.localIP().toString() + " DNS: " + WiFi.dnsIP().toString();
+      sLog.send(status, true);
+//      bleIF.updateStatus(((String)"IP: " + WiFi.localIP().toString()).c_str());
     } else {
-      vTaskDelay(HEARTBEAT * 60 / portTICK_PERIOD_MS);
-      sLog.send("No WiFi Found...reconnecting");
-      WiFi.reconnect();  // Try to reconnect to the server
+      bleIF.updateStatus("WiFi not connected");
+      vTaskDelay(HEARTBEAT * 30 / portTICK_PERIOD_MS);
+      WiFi.reconnect();
     }
   }
   vTaskDelete(NULL);  // Should never reach this.

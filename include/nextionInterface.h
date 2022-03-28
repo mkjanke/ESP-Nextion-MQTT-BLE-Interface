@@ -59,7 +59,7 @@ class myNextionInterface {
   }
 
   // Thread safe writes (I think...)
-  void writeNum(String _componentName, uint32_t _val) {
+  void writeNum(const String& _componentName, uint32_t _val) {
     sLog.send((String)"writeNum: " + _componentName + ", " + _val);
 
     if (xSemaphoreTake(xSerialWriteSemaphore, 100 / portTICK_PERIOD_MS) ==
@@ -74,7 +74,7 @@ class myNextionInterface {
     }
   }
 
-  void writeStr(String command, String txt) {
+  void writeStr(const String& command, const String& txt) {
     sLog.send("writeStr: " + command + ", " + txt);
 
     if (xSemaphoreTake(xSerialWriteSemaphore, 100 / portTICK_PERIOD_MS) ==
@@ -90,7 +90,7 @@ class myNextionInterface {
     }
   }
 
-  void writeCmd(String command) {
+  void writeCmd(const String& command) {
     sLog.send("writeCmd: " + command);
 
     if (xSemaphoreTake(xSerialWriteSemaphore, 1000 / portTICK_PERIOD_MS) ==

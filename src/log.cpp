@@ -1,8 +1,10 @@
 #include "log.h"
+#include "bleInterface.h"
 #include <WiFi.h>
 
 Logger sLog;
-
+extern bleInterface bleIF;
+ 
 #ifdef TLOG_TELNET
 #include <TelnetSerialStream.h>
 TelnetSerialStream telnetSerialStream = TelnetSerialStream();
@@ -42,11 +44,23 @@ void Logger::init(){
   begin();
 }
 
-void Logger::send(String message) {
+void Logger::send(String &message, bool ble) {
   if (WiFi.isConnected()){
     if (xSemaphoreTake(xLogSemaphore, 100 / portTICK_PERIOD_MS) == pdTRUE) {
       println((String)DEVICE_NAME + ": " + message);
       xSemaphoreGive(xLogSemaphore);
     }
   }
+  if (ble)
+    bleIF.updateStatus(message.c_str());
+}
+void Logger::send(const char *message, bool ble) {
+  if (WiFi.isConnected()){
+    if (xSemaphoreTake(xLogSemaphore, 100 / portTICK_PERIOD_MS) == pdTRUE) {
+      println((String)DEVICE_NAME + ": " + message);
+      xSemaphoreGive(xLogSemaphore);
+    }
+  }
+  if (ble)
+    bleIF.updateStatus(message);
 }

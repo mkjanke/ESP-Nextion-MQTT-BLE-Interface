@@ -9,14 +9,15 @@ class bleInterface {
   char msgBuffer[32];  // Return Nextion command from BLE interface
 
   void begin();
-  void updateUptime(char *);
+  void updateUptime(const char *);
+  void updateStatus(const char *);
 
-  void writeMessage(std::string);
-  void writeMessage(char *);
-  void writeMessage(uint8_t *, uint8_t);
-  void writeEvent(std::string);
-  void writeEvent(char *);
-  void writeEvent(uint8_t *, uint8_t);
+  void writeMessage(std::string &);
+  void writeMessage(const char *);
+  void writeMessage(const uint8_t *, uint8_t);
+  void writeEvent(std::string &);
+  void writeEvent(const char *);
+  void writeEvent(const uint8_t *, uint8_t);
 
   void stopAdvertising();
 

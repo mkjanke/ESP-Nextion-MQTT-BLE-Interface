@@ -9,7 +9,8 @@ class Logger : public TLog {
     Logger() : TLog(){}
 
     void init();
-    void send(String);
+    void send(const char *, bool=false);
+    void send(String &, bool=false);
 
 };
 
