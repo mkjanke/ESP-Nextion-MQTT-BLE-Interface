@@ -48,12 +48,35 @@ void onPublishEvent(const MqttClient*,
   }
 }
 
+void handleWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info){
+  String status;
+  status.reserve(40);
+  const String wifiConnected = NEXT_WIFI_CONN_WIDGET;
+  const String wifiDisconnected = NEXT_WIFI_DISC_WIDGET;
+
+  switch (event){
+    case SYSTEM_EVENT_STA_GOT_IP:
+      status=(String)"IP:" + WiFi.localIP().toString() + " DNS:" + WiFi.dnsIP().toString();
+      bleIF.updateStatus(status.c_str());
+      myNex.writeCmd("vis " + wifiConnected + ",1");
+      myNex.writeCmd("vis " + wifiDisconnected + ",0");
+      break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+      bleIF.updateStatus("WiFi not connected");
+      myNex.writeCmd("vis " + wifiDisconnected + ",1");
+      myNex.writeCmd("vis " + wifiConnected + ",0");
+      break;
+    default:
+      break;
+  }
+}
+
 void setup() {
   // Initialize WiFi
   vTaskDelay(500 / portTICK_PERIOD_MS);
   WiFi.begin(ssid, password);
   WiFi.setHostname(DEVICE_NAME);
-  WiFi.setAutoReconnect(true);
+  WiFi.onEvent(handleWiFiEvent);
 
   // Initialize OTA Update libraries
   ArduinoOTA.setHostname(DEVICE_NAME);
@@ -117,14 +140,6 @@ void loop() {
   delay(100);
   if (loopct > 100) {
     loopct = 0;
-    // mqttBroker.dump();
-
-    // Serial << "Task HW: N: "
-    //        << uxTaskGetStackHighWaterMark(xhandleNextionHandle)
-    //        << "b H: " << uxTaskGetStackHighWaterMark(xheartBeatHandle)
-    //        << "b W: " << uxTaskGetStackHighWaterMark(xcheckWiFiHandle) << "b"
-    //        << endl;
-    // Serial << "Min Free Heap: " << esp_get_minimum_free_heap_size() << endl;
   }
 }  // loop()
 
@@ -268,16 +283,15 @@ void heartBeat(void* parameter) {
 
 // Check Wifi task
 // check Wifi connection, attempt reconnect
-//
 void checkWiFi(void* parameter) {
   String status;
   status.reserve(40);
+
   for (;;) {  // infinite loop
     vTaskDelay(HEARTBEAT * 30 / portTICK_PERIOD_MS);
     if (WiFi.status() == WL_CONNECTED) {
-      status=(String)"IP: " + WiFi.localIP().toString() + " DNS: " + WiFi.dnsIP().toString();
+      status=(String)"IP:" + WiFi.localIP().toString() + " DNS:" + WiFi.dnsIP().toString();
       sLog.send(status, true);
-//      bleIF.updateStatus(((String)"IP: " + WiFi.localIP().toString()).c_str());
     } else {
       bleIF.updateStatus("WiFi not connected");
       vTaskDelay(HEARTBEAT * 30 / portTICK_PERIOD_MS);
