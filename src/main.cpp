@@ -31,7 +31,8 @@ bool bleInterface::messageWaiting = false;
 
 WiFiServer server(80);
 
-myNextionInterface myNex(Serial);
+// May need to use Serial2, depending on ESP32 module and pinouts
+myNextionInterface myNex(Serial1);
 
 TaskHandle_t xheartBeatHandle = NULL;  // Task handles
 TaskHandle_t xhandleNextionHandle = NULL;

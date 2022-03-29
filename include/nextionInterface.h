@@ -38,7 +38,7 @@ class myNextionInterface {
   }
 
   void begin(unsigned long baud) {
-    _serial->begin(baud);
+    _serial->begin(baud,SERIAL_8N1, RXDN, TXDN);
     delay(100);  // Pause for effect
     flushReads();
     //Reset Nextion
