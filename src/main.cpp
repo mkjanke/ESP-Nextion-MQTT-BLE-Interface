@@ -14,6 +14,9 @@ void uptime();
 
 void heartBeat(void*);
 void checkWiFi(void*);
+void wifiIcon(bool);
+void handleWiFiEvent(WiFiEvent_t, WiFiEventInfo_t);
+
 void handleNextion(void*);
 void outputWebPage(WiFiClient);
 
@@ -48,23 +51,34 @@ void onPublishEvent(const MqttClient*,
   }
 }
 
+// Enable/disable Wifi Icon on Nextion Display
+void wifiIcon(bool on) {
+  const String wifiConnected = NEXT_WIFI_CONN_WIDGET;
+  const String wifiDisconnected = NEXT_WIFI_DISC_WIDGET;
+  if (on){
+    myNex.writeCmd("vis " + wifiConnected + ",1");
+    myNex.writeCmd("vis " + wifiDisconnected + ",0");
+  }
+  else {
+    myNex.writeCmd("vis " + wifiDisconnected + ",1");
+    myNex.writeCmd("vis " + wifiConnected + ",0");
+  }
+}
+
+// WiFi Event handler - catch WiFi events, forward to BLE interface
 void handleWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info){
   String status;
   status.reserve(40);
-  const String wifiConnected = NEXT_WIFI_CONN_WIDGET;
-  const String wifiDisconnected = NEXT_WIFI_DISC_WIDGET;
 
   switch (event){
     case SYSTEM_EVENT_STA_GOT_IP:
       status=(String)"IP:" + WiFi.localIP().toString() + " DNS:" + WiFi.dnsIP().toString();
       bleIF.updateStatus(status.c_str());
-      myNex.writeCmd("vis " + wifiConnected + ",1");
-      myNex.writeCmd("vis " + wifiDisconnected + ",0");
+      wifiIcon(true);
       break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
       bleIF.updateStatus("WiFi not connected");
-      myNex.writeCmd("vis " + wifiDisconnected + ",1");
-      myNex.writeCmd("vis " + wifiConnected + ",0");
+      wifiIcon(false);
       break;
     default:
       break;
@@ -292,8 +306,10 @@ void checkWiFi(void* parameter) {
     if (WiFi.status() == WL_CONNECTED) {
       status=(String)"IP:" + WiFi.localIP().toString() + " DNS:" + WiFi.dnsIP().toString();
       sLog.send(status, true);
+      wifiIcon(true); // Show Wifi Icon
     } else {
       bleIF.updateStatus("WiFi not connected");
+      wifiIcon(false); // Dim Wifi Icon
       vTaskDelay(HEARTBEAT * 30 / portTICK_PERIOD_MS);
       WiFi.reconnect();
     }
