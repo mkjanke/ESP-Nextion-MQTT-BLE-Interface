@@ -21,17 +21,20 @@
 #define NEXT_HEARTBEAT_VAR "heartbeat"         // Nextion Heartbeat global variable
 
 // Nextion Serial pins
-#define RXD2 16
-#define TXD2 17
+#define RXDN 19
+#define TXDN 21
 
 // Nextion Widgets
 #define NEXT_UPTIME_WIDGET "page0.upTxt.txt" // Name of Uptime widget on Nextion display
 #define NEXT_ESPOUT_WIDGET "page1.ESP.txt"   // Widget to display ESP debug output
+#define NEXT_WIFI_CONN_WIDGET "WiFiConnected" //WiFi Icon Bright
+#define NEXT_WIFI_DISC_WIDGET "WiFiDisc" //WiFi Icon Dim
 
 // BlueTooth UUID's
-#define SERVICE_UUID        "611f9238-3915-11ec-8d3d-0242ac130003"  // Bluetooth service
-#define MESSAGE_UUID        "6bcbec08-7fbb-11ec-a8a3-0242ac120002"  // Nextion Command (write to this characteristic to send command to Nextion)
-#define EVENT_UUID          "6bcbee60-7fbb-11ec-a8a3-0242ac120002"  // Nextion message
-#define UPTIME_UUID         "611f96f2-3915-11ec-8d3d-0242ac130003"  // ESP32 Uptime
+#define SERVICE_UUID        "611f9238-3915-11ec-8d3d-0242ac130003"  // 9238
+#define MESSAGE_UUID        "6bcbec08-7fbb-11ec-a8a3-0242ac120002"  // 0002 String - Nextion Command
+#define EVENT_UUID          "6bcbee60-7fbb-11ec-a8a3-0242ac120002"
+#define UPTIME_UUID         "611f96f2-3915-11ec-8d3d-0242ac130003"  // 96f2 String
+#define STATUS_UUID         "6bcbf0ea-7fbb-11ec-a8a3-0242ac120002"  // String
 
 #endif //SETTINGS_H
