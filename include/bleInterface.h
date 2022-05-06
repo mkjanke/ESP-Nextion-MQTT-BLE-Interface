@@ -6,7 +6,7 @@ class bleInterface {
  public:
   static bool deviceConnected;
   static bool messageWaiting;
-  char msgBuffer[32];  // Return Nextion command from BLE interface
+  char msgBuffer[64];  // Return Nextion command from BLE interface
 
   void begin();
   void updateUptime(const char *);
@@ -20,6 +20,7 @@ class bleInterface {
   void writeEvent(const uint8_t *, uint8_t);
 
   void stopAdvertising();
+  void startAdvertising();
 
   bleInterface(){};
 };

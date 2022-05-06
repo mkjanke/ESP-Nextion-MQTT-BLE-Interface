@@ -2,6 +2,7 @@
 
 #include "bleInterface.h"
 #include "settings.h"
+#include "log.h"
 
 // Bluetooth related defines and classes
 BLEServer* pServer;
@@ -14,11 +15,31 @@ BLECharacteristic* uptimeBLEC;
 BLECharacteristic* statusBLEC;
 
 class MyServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer* pServer) { bleInterface::deviceConnected = true; };
 
-  void onDisconnect(BLEServer* pServer) {
+  void onConnect(BLEServer* pServer, ble_gap_conn_desc* desc) { 
+    bleInterface::deviceConnected = true; 
+    char t[56];
+    snprintf(t, sizeof(t), "BLE Conn %s L: %d, St: %d, Itvl: %d", 
+              NimBLEAddress(desc->peer_ota_addr).toString().c_str(), 
+              desc->conn_latency, desc->supervision_timeout, desc->conn_itvl);
+    sLog.send(t);
+
+    // pServer->updateConnParams(desc->conn_handle, 24, 48, 0, 60);
+
+    pAdvertising->start();
+    pAdvertising->setScanResponse(true);
+  };
+
+  void onDisconnect(BLEServer* pServer, ble_gap_conn_desc* desc) {
+    // Not sure if this is necessary or not
+    NimBLEDevice::whiteListAdd(NimBLEAddress(desc->peer_ota_addr));
+
     bleInterface::deviceConnected = false;
-  }
+    char t[40];
+    snprintf(t, sizeof(t), "BLE Disconnect %s", 
+              NimBLEAddress(desc->peer_ota_addr).toString().c_str());
+    sLog.send(t);
+    }
 };
 
 // General purpose callback for handling String characteristic writes
@@ -94,12 +115,19 @@ void bleInterface::stopAdvertising() {
   pAdvertising->stop();
   pAdvertising->setScanResponse(false);
 }
+void bleInterface::startAdvertising() {
+  pAdvertising->start();
+  pAdvertising->setScanResponse(true);
+}
 
 void bleInterface::begin() {
   BLEDevice::init(DEVICE_NAME);         // Create BLE device
   pServer = BLEDevice::createServer();  // Create BLE server
   pServer->setCallbacks(
       new MyServerCallbacks());  // Set the callback function of the server
+
+  pServer->advertiseOnDisconnect(true);
+
   pService = pServer->createService(SERVICE_UUID);  // Create BLE service
 
   // Characteristic for sending commands to Nextion
@@ -138,6 +166,7 @@ void bleInterface::begin() {
 
   pService->start();
   pAdvertising = pServer->getAdvertising();
-  pAdvertising->start();
-  pAdvertising->setScanResponse(true);
+
+  startAdvertising();
+
 }
