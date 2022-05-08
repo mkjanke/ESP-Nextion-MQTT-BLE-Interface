@@ -5,13 +5,14 @@
 #include <Syslog.h>
 
 class Logger : public Syslog {
+  private:
 
   public:
     using Syslog::Syslog;
 
     void init();
     void send(const char *, bool=false);
-    void send(String &, bool=false);
+    void send(const String &, bool=false);
 };
 
 extern Logger sLog;
