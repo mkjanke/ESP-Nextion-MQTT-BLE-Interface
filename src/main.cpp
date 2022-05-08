@@ -100,7 +100,6 @@ void setup() {
 
   vTaskDelay(2500 / portTICK_PERIOD_MS);
   sLog.init();
-  sLog.send((String)DEVICE_NAME + " is Woke");
 
   sLog.send("Starting BlueTooth");
   bleIF.begin();
@@ -130,6 +129,9 @@ void setup() {
   xTaskCreate(checkWiFi, "Check WiFi", 3000, NULL, 1, &xcheckWiFiHandle);
   xTaskCreate(handleNextion, "Nextion Handler", 3000, NULL, 6, &xhandleNextionHandle);
   xTaskCreate(heartBeat, "Heartbeat", 3000, NULL, 1, &xheartBeatHandle);
+  
+  sLog.send((String)DEVICE_NAME + " is Woke");
+
 }
 
 uint8_t loopct = 0;
@@ -150,7 +152,7 @@ void loop() {
     client.stop();
   }
 
-  sLog.loop();
+//  sLog.loop();
 
   delay(100);
   if (loopct > 100) {

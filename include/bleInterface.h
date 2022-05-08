@@ -1,6 +1,7 @@
 #ifndef BLEINTERFACE_H
 #define BLEINTERFACE_H
 #include <stdint.h>  // typedef uint8_t
+#include <string>
 
 class bleInterface {
  public:

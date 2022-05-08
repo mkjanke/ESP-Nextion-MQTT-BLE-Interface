@@ -15,15 +15,14 @@ BLECharacteristic* uptimeBLEC;
 BLECharacteristic* statusBLEC;
 
 class MyServerCallbacks : public BLEServerCallbacks {
+  char pBuffer[64];
 
   void onConnect(BLEServer* pServer, ble_gap_conn_desc* desc) { 
     bleInterface::deviceConnected = true; 
-    char t[56];
-    snprintf(t, sizeof(t), "BLE Conn %s L: %d, St: %d, Itvl: %d", 
+    snprintf(pBuffer, sizeof(pBuffer), "BLE Conn %s L: %d, St: %d, Itvl: %d", 
               NimBLEAddress(desc->peer_ota_addr).toString().c_str(), 
               desc->conn_latency, desc->supervision_timeout, desc->conn_itvl);
-    sLog.send(t);
-
+    sLog.send(pBuffer);
     // pServer->updateConnParams(desc->conn_handle, 24, 48, 0, 60);
 
     pAdvertising->start();
@@ -35,10 +34,9 @@ class MyServerCallbacks : public BLEServerCallbacks {
     NimBLEDevice::whiteListAdd(NimBLEAddress(desc->peer_ota_addr));
 
     bleInterface::deviceConnected = false;
-    char t[40];
-    snprintf(t, sizeof(t), "BLE Disconnect %s", 
+    snprintf(pBuffer, sizeof(pBuffer), "BLE Disconnect %s", 
               NimBLEAddress(desc->peer_ota_addr).toString().c_str());
-    sLog.send(t);
+    sLog.send(pBuffer);
     }
 };
 

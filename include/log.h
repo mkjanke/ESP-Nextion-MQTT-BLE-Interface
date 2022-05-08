@@ -2,16 +2,16 @@
 #define LOG_H
 
 #include "settings.h"
-#include "TLog.h"
+#include <Syslog.h>
 
-class Logger : public TLog {
+class Logger : public Syslog {
+
   public:
-    Logger() : TLog(){}
+    using Syslog::Syslog;
 
     void init();
     void send(const char *, bool=false);
     void send(String &, bool=false);
-
 };
 
 extern Logger sLog;
