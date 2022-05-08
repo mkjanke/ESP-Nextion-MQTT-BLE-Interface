@@ -45,7 +45,7 @@ MqttClient mqttNexClient(&mqttBroker);
 void onPublishEvent(const MqttClient*, 
                     const Topic& topic,
                     const char* payload, size_t) {
-  sLog.send((String)"--> mqttNexClient received: " + topic.c_str() + " : " + payload);
+  sLog.send(((std::string)"--> mqttNexClient received: " + topic.c_str() + " : " + payload).c_str());
 
   if (topic.matches(myNex.cmdTopic)) {
     myNex.writeCmd(payload);
@@ -308,7 +308,7 @@ void checkWiFi(void* parameter) {
     vTaskDelay(HEARTBEAT * 30 / portTICK_PERIOD_MS);
     if (WiFi.status() == WL_CONNECTED) {
       status=(String)"IP:" + WiFi.localIP().toString() + " DNS:" + WiFi.dnsIP().toString();
-      sLog.send(status, true);
+      sLog.send(status.c_str(), true);
       wifiIcon(true); // Show Wifi Icon
     } else {
       bleIF.updateStatus("WiFi not connected");
