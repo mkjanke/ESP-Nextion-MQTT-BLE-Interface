@@ -23,7 +23,8 @@ class bleInterface {
   void stopAdvertising();
   void startAdvertising();
 
-  bleInterface(){};
+  bleInterface(){
+  };
 };
 
 #endif  // BLEINTERFACE_H

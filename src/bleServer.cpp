@@ -4,6 +4,9 @@
 #include "settings.h"
 #include "log.h"
 
+bool bleInterface::deviceConnected = false;
+bool bleInterface::messageWaiting = false;
+
 // Bluetooth related defines and classes
 BLEServer* pServer;
 BLEService* pService;
@@ -119,6 +122,9 @@ void bleInterface::startAdvertising() {
 }
 
 void bleInterface::begin() {
+
+  sLog.send("Starting BlueTooth");
+
   BLEDevice::init(DEVICE_NAME);         // Create BLE device
   pServer = BLEDevice::createServer();  // Create BLE server
   pServer->setCallbacks(

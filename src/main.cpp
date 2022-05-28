@@ -2,19 +2,16 @@
 #include <ArduinoOTA.h>
 #include <WiFi.h>
 
-#include "TinyMqtt.h"
 #include "bleInterface.h"
+#include "mqttInterface.h"
 #include "esp_system.h"
 #include "nextionInterface.h"
 #include "settings.h"
 
 #include "log.h"
 
-void uptime();
-
-void heartBeat(void*);
+extern void heartBeat(void*);
 void checkWiFi(void*);
-void wifiIcon(bool);
 void handleWiFiEvent(WiFiEvent_t, WiFiEventInfo_t);
 
 void handleNextion(void*);
@@ -23,11 +20,9 @@ void outputWebPage(WiFiClient);
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
 
-char uptimeBuffer[20];  // scratch space for storing formatted 'uptime' string
+extern char uptimeBuffer[];  // scratch space for storing formatted 'uptime' string
 
 bleInterface bleIF;
-bool bleInterface::deviceConnected = false;
-bool bleInterface::messageWaiting = false;
 
 WiFiServer server(80);
 
@@ -37,34 +32,6 @@ myNextionInterface myNex(Serial1);
 TaskHandle_t xheartBeatHandle = NULL;  // Task handles
 TaskHandle_t xhandleNextionHandle = NULL;
 TaskHandle_t xcheckWiFiHandle = NULL;
-
-MqttBroker mqttBroker(MQTT_PORT);
-MqttClient mqttNexClient(&mqttBroker);
-
-// MQTT client callback
-void onPublishEvent(const MqttClient*, 
-                    const Topic& topic,
-                    const char* payload, size_t) {
-  sLog.send(((std::string)"--> mqttNexClient received: " + topic.c_str() + " : " + payload).c_str());
-
-  if (topic.matches(myNex.cmdTopic)) {
-    myNex.writeCmd(payload);
-  }
-}
-
-// Enable/disable Wifi Icon on Nextion Display
-void wifiIcon(bool on) {
-  const String wifiConnected = NEXT_WIFI_CONN_WIDGET;
-  const String wifiDisconnected = NEXT_WIFI_DISC_WIDGET;
-  if (on){
-    myNex.writeCmd("vis " + wifiConnected + ",1");
-    myNex.writeCmd("vis " + wifiDisconnected + ",0");
-  }
-  else {
-    myNex.writeCmd("vis " + wifiDisconnected + ",1");
-    myNex.writeCmd("vis " + wifiConnected + ",0");
-  }
-}
 
 // WiFi Event handler - catch WiFi events, forward to BLE interface
 void handleWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info){
@@ -76,12 +43,12 @@ void handleWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info){
     case ARDUINO_EVENT_WIFI_STA_GOT_IP:
       status=(String)"IP:" + WiFi.localIP().toString() + " DNS:" + WiFi.dnsIP().toString();
       bleIF.updateStatus(status.c_str());
-      wifiIcon(true);
+      myNex.wifiIcon(true);
       break;
     // case SYSTEM_EVENT_STA_DISCONNECTED:
     case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
       bleIF.updateStatus("WiFi not connected");
-      wifiIcon(false);
+      myNex.wifiIcon(false);
       break;
     default:
       break;
@@ -102,24 +69,9 @@ void setup() {
   vTaskDelay(2500 / portTICK_PERIOD_MS);
   sLog.init();
 
-  sLog.send("Starting BlueTooth");
-  bleIF.begin();
-  bleIF.updateUptime(uptimeBuffer);
-
-  // Initialize MQTT broker
-  vTaskDelay(100 / portTICK_PERIOD_MS);
-  sLog.send("Starting MQTT Broker", true);
-  mqttBroker.begin();
-
-  // Initialize Nextion interface
-  vTaskDelay(100 / portTICK_PERIOD_MS);
-  sLog.send("Starting myNex", true);
-  myNex.begin(115200);
-
-  mqttNexClient.setCallback(onPublishEvent);
-  mqttNexClient.subscribe(myNex.eventTopic);
-  mqttNexClient.subscribe(myNex.cmdTopic);
-  mqttNexClient.subscribe(myNex.uptimeTopic);
+  bleIF.begin();        // Start Bluetooth Interface
+  mqtt::begin();        // Initialize MQTT broker
+  myNex.begin(115200);  // Initialize Nextion interface
 
   vTaskDelay(100 / portTICK_PERIOD_MS);
   // Start web server
@@ -141,14 +93,13 @@ void setup() {
 void loop() {
   ArduinoOTA.handle();
 
-  mqttBroker.loop();
-  mqttNexClient.loop();
+  mqtt::loop();
 
   // Check for incoming message from BLE interface
   // If we see message from BLE, forward to Nextion via MQTT
   if (bleInterface::messageWaiting) {
     bleInterface::messageWaiting = false;
-    mqttNexClient.publish(myNex.cmdTopic, bleIF.msgBuffer);
+    mqtt::NexClient.publish(myNex.cmdTopic, bleIF.msgBuffer);
   }
   vTaskDelay(100 / portTICK_PERIOD_MS);
 
@@ -201,7 +152,7 @@ void handleNextion(void* parameter) {
         // and to MQTT.
         for (size_t i = 0; i < sizeof filter; i++) {
           if (_bytes[0] == filter[i]) {
-            mqttNexClient.publish(myNex.eventTopic, _hexString);
+            mqtt::NexClient.publish(myNex.eventTopic, _hexString);
             bleIF.writeEvent(_hexString);
 
             if (_bytes[0] == '\x70') {
@@ -212,7 +163,7 @@ void handleNextion(void* parameter) {
             }
             // Forward filtered events to MQTT as subtopics
             std::string t = myNex.eventTopic + "/" + _hexString.substr(0, 2);
-            mqttNexClient.publish(t, _hexString);
+            mqtt::NexClient.publish(t, _hexString);
           }
         }
       } else {
@@ -225,73 +176,6 @@ void handleNextion(void* parameter) {
   vTaskDelete(NULL);  // Should never reach this.
 }  // handleNextion()
 
-// Calculate uptime & populate uptime buffer for future use
-void uptime() {
-  // Constants for uptime calculations
-  static const uint32_t millis_in_day = 1000 * 60 * 60 * 24;
-  static const uint32_t millis_in_hour = 1000 * 60 * 60;
-  static const uint32_t millis_in_minute = 1000 * 60;
-
-  uint8_t days = millis() / (millis_in_day);
-  uint8_t hours = (millis() - (days * millis_in_day)) / millis_in_hour;
-  uint8_t minutes =
-      (millis() - (days * millis_in_day) - (hours * millis_in_hour)) /
-      millis_in_minute;
-  snprintf(uptimeBuffer, sizeof(uptimeBuffer), "Uptime: %2dd%2dh%2dm", days,
-           hours, minutes);
-}
-
-// Heartbeat task - update uptime buffer
-//                - update heartbeat field on Nextion
-void heartBeat(void* parameter) {
-  uint8_t loopct = 0;
-
-  for (;;) {  // ever
-    loopct++;
-    vTaskDelay(10000 / portTICK_PERIOD_MS);
-
-    uptime();
-    sLog.send(uptimeBuffer);
-
-    mqttNexClient.publish(myNex.uptimeTopic, uptimeBuffer);
-
-    myNex.writeStr(NEXT_UPTIME_WIDGET, uptimeBuffer);
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-    myNex.writeNum("heartbeat", 1);
-
-    char buffer[48];
-    snprintf(buffer, sizeof(buffer), "N:%ib\\rH:%ib\\rW:%ib\\rH:%i,%i",
-             uxTaskGetStackHighWaterMark(xhandleNextionHandle),
-             uxTaskGetStackHighWaterMark(xheartBeatHandle),
-             uxTaskGetStackHighWaterMark(xcheckWiFiHandle),
-             esp_get_minimum_free_heap_size(),
-             heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
-
-    myNex.writeStr(NEXT_ESPOUT_WIDGET, buffer);
-
-    snprintf(buffer, sizeof(buffer), "%i", esp_get_minimum_free_heap_size());
-    mqttNexClient.publish(NEXT_ESP_FREEHEAP, buffer);
-
-    snprintf(buffer, sizeof(buffer), "%i",
-             uxTaskGetStackHighWaterMark(xhandleNextionHandle));
-    mqttNexClient.publish(NEXT_ESP_NSTACK, buffer);
-
-    snprintf(buffer, sizeof(buffer), "%i",
-             uxTaskGetStackHighWaterMark(xheartBeatHandle));
-    mqttNexClient.publish(NEXT_ESP_HSTACK, buffer);
-
-    snprintf(buffer, sizeof(buffer), "%i",
-             uxTaskGetStackHighWaterMark(xcheckWiFiHandle));
-    mqttNexClient.publish(NEXT_ESP_WSTACK, buffer);
-
-    bleIF.updateUptime(uptimeBuffer);
-
-    if (loopct > 100) {
-      loopct = 0;
-    }
-  }
-  vTaskDelete(NULL);  // Should never reach this.
-}  // heartBeat()
 
 // Check Wifi task
 // check Wifi connection, attempt reconnect
@@ -304,10 +188,10 @@ void checkWiFi(void* parameter) {
     if (WiFi.status() == WL_CONNECTED) {
       status=(String)"IP:" + WiFi.localIP().toString() + " DNS:" + WiFi.dnsIP().toString();
       sLog.send(status.c_str(), true);
-      wifiIcon(true); // Show Wifi Icon
+      myNex.wifiIcon(true); // Show Wifi Icon
     } else {
       bleIF.updateStatus("WiFi not connected");
-      wifiIcon(false); // Dim Wifi Icon
+      myNex.wifiIcon(false); // Dim Wifi Icon
       vTaskDelay(HEARTBEAT * 30 / portTICK_PERIOD_MS);
       WiFi.reconnect();
     }
