@@ -20,23 +20,18 @@ class myNextionInterface {
   const std::string cmdTopic = NEXT_COMMAND;
   
   myNextionInterface(HardwareSerial& serial) {
-    /* Initialize semaphores
+    _serial = &serial;
+  }
 
-      Note from FreeRtos docs:
-      The semaphore is created in the 'empty' state, meaning the semaphore
-      must first be given using the xSemaphoreGive() API function before it can
-      subsequently be taken (obtained) using the xSemaphoreTake() function.
-    */
+  void begin(unsigned long baud) {
+    // Initialize semaphores
     _xSerialWriteSemaphore = xSemaphoreCreateBinary();
     xSemaphoreGive(_xSerialWriteSemaphore);
     _xSerialReadSemaphore = xSemaphoreCreateBinary();
     xSemaphoreGive(_xSerialReadSemaphore);
 
-    _serial = &serial;
-  }
-
-  void begin(unsigned long baud) {
     _serial->begin(baud,SERIAL_8N1, RXDN, TXDN);
+
     delay(100);  // Pause for effect
     flushReads();
     //Reset Nextion
@@ -109,7 +104,7 @@ class myNextionInterface {
   } //writeCmd()
 
   // This gets called in a task or the loop().
-  // Pass std::string and maximum ytes to be read
+  // Pass std::string and maximum bytes to be read
   // Returns actual bytes read and populated string
   // or 'false' if no bytes read
   int listen(std::string& _nexBytes, uint8_t _size) {
@@ -138,6 +133,7 @@ class myNextionInterface {
       }
     }
     else
+      sLog.send("listen() read Semaphore NULL");
       return false;
   }  //listen()
 };

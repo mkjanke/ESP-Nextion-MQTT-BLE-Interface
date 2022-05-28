@@ -6,6 +6,8 @@
 #define DEVICE_NAME "ESP-Display"   //Change me
 
 #define HEARTBEAT 1000L             // Sensor and WiFi loop delay (ms)
+#define SYSLOG_HOST "192.168.1.7"
+#define SYSLOG_PORT 514
 
 //MQTT broker
 #define MQTT_PORT 1883

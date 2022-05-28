@@ -5,6 +5,7 @@ An attempt to create and interface that allows updating a Nextion display via ei
 Uses:
 
 * TinyMqtt https://github.com/hsaturn/TinyMqtt
+* https://github.com/brokentoaster/Syslog.git
 * NimBLE
 
 Note: the TinyMQTT library currently has a memory leak when MQTT client connections are closed. Use with caution!

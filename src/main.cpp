@@ -72,12 +72,14 @@ void handleWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info){
   status.reserve(40);
 
   switch (event){
-    case SYSTEM_EVENT_STA_GOT_IP:
+    // case SYSTEM_EVENT_STA_GOT_IP:
+    case ARDUINO_EVENT_WIFI_STA_GOT_IP:
       status=(String)"IP:" + WiFi.localIP().toString() + " DNS:" + WiFi.dnsIP().toString();
       bleIF.updateStatus(status.c_str());
       wifiIcon(true);
       break;
-    case SYSTEM_EVENT_STA_DISCONNECTED:
+    // case SYSTEM_EVENT_STA_DISCONNECTED:
+    case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
       bleIF.updateStatus("WiFi not connected");
       wifiIcon(false);
       break;
@@ -91,7 +93,6 @@ void setup() {
   vTaskDelay(500 / portTICK_PERIOD_MS);
   WiFi.begin(ssid, password);
   WiFi.setHostname(DEVICE_NAME);
-  WiFi.onEvent(handleWiFiEvent);
 
   // Initialize OTA Update libraries
   ArduinoOTA.setHostname(DEVICE_NAME);
@@ -132,9 +133,10 @@ void setup() {
   
   sLog.send((String)DEVICE_NAME + " is Woke");
 
-}
+  // Timing sensitive - if too early in setup() bootup crashes with spinlock error.
+  WiFi.onEvent(handleWiFiEvent);
 
-uint8_t loopct = 0;
+}
 
 void loop() {
   ArduinoOTA.handle();
@@ -142,7 +144,13 @@ void loop() {
   mqttBroker.loop();
   mqttNexClient.loop();
 
-  loopct++;
+  // Check for incoming message from BLE interface
+  // If we see message from BLE, forward to Nextion via MQTT
+  if (bleInterface::messageWaiting) {
+    bleInterface::messageWaiting = false;
+    mqttNexClient.publish(myNex.cmdTopic, bleIF.msgBuffer);
+  }
+  vTaskDelay(100 / portTICK_PERIOD_MS);
 
   WiFiClient client = server.available();  // Listen for incoming clients
   if (client) {
@@ -150,13 +158,6 @@ void loop() {
     outputWebPage(client);  // If a new client connects,
     client.flush();
     client.stop();
-  }
-
-//  sLog.loop();
-
-  delay(100);
-  if (loopct > 100) {
-    loopct = 0;
   }
 }  // loop()
 
@@ -219,13 +220,6 @@ void handleNextion(void* parameter) {
         myNex.flushReads();
       }
     }
-    // Check for incoming message from BLE interface
-    // If we see message from BLE, forward to Nextion via MQTT
-    if (bleInterface::messageWaiting) {
-      bleInterface::messageWaiting = false;
-      mqttNexClient.publish(myNex.cmdTopic, bleIF.msgBuffer);
-    }
-
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
   vTaskDelete(NULL);  // Should never reach this.
@@ -265,12 +259,13 @@ void heartBeat(void* parameter) {
     vTaskDelay(100 / portTICK_PERIOD_MS);
     myNex.writeNum("heartbeat", 1);
 
-    char buffer[37];
-    snprintf(buffer, sizeof(buffer), "N:%ib\\rH:%ib\\rW:%ib\\rH:%i",
+    char buffer[48];
+    snprintf(buffer, sizeof(buffer), "N:%ib\\rH:%ib\\rW:%ib\\rH:%i,%i",
              uxTaskGetStackHighWaterMark(xhandleNextionHandle),
              uxTaskGetStackHighWaterMark(xheartBeatHandle),
              uxTaskGetStackHighWaterMark(xcheckWiFiHandle),
-             esp_get_minimum_free_heap_size());
+             esp_get_minimum_free_heap_size(),
+             heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
 
     myNex.writeStr(NEXT_ESPOUT_WIDGET, buffer);
 
