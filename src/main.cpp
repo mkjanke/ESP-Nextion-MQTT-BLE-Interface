@@ -27,7 +27,7 @@ bleInterface bleIF;
 WiFiServer server(80);
 
 // May need to use Serial2, depending on ESP32 module and pinouts
-myNextionInterface myNex(Serial1);
+myNextionInterface myNex(NEXTION_SERIAL, NEXTION_BAUD);
 
 TaskHandle_t xheartBeatHandle = NULL;  // Task handles
 TaskHandle_t xhandleNextionHandle = NULL;
@@ -71,7 +71,7 @@ void setup() {
 
   bleIF.begin();        // Start Bluetooth Interface
   mqtt::begin();        // Initialize MQTT broker
-  myNex.begin(115200);  // Initialize Nextion interface
+  myNex.begin();        // Initialize Nextion interface
 
   vTaskDelay(100 / portTICK_PERIOD_MS);
   // Start web server
@@ -123,13 +123,12 @@ void handleNextion(void* parameter) {
                          '\x70', '\x71', '\x86', '\x87',
                          '\xAA'};
 
-  std::string
-      _bytes;  // Raw bytes returned from Nextion, including FF terminaters
+  std::string _bytes;  // Raw bytes returned from Nextion, incl. \xFF terminaters
   _bytes.reserve(48);
-  std::string _hexString;  //_bytes converted to space delimited ASCII chars in
-                           //std::string
+
+  std::string _hexString;  // _bytes converted to space delimited ASCII chars
                            // I.E. 1A B4 E4 FF FF FF
-  char _x[] = {};
+  char _x[3] = {};
 
   vTaskDelay(100 / portTICK_PERIOD_MS);
 

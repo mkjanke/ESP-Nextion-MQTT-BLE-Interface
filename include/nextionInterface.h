@@ -9,6 +9,7 @@
 class myNextionInterface {
  private:
   HardwareSerial* _serial;
+  unsigned long _baud;
   const char _cmdTerminator[3] = {'\xFF', '\xFF', '\xFF'};
 
   // Avoid smashing Nextion with overlapping reads and writes
@@ -21,9 +22,9 @@ class myNextionInterface {
   const std::string uptimeTopic = NEXT_UPTIME;
   const std::string cmdTopic = NEXT_COMMAND;
 
-  myNextionInterface(HardwareSerial&);
+  myNextionInterface(HardwareSerial&, unsigned long);
 
-  void begin(unsigned long);
+  void begin();
   void flushReads();
 
   void writeNum(const String&, uint32_t);

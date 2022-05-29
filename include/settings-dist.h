@@ -22,7 +22,9 @@
 #define NEXT_ESP_WSTACK "display/ESP/wStack"   // Web Server Task Stack High Water Output Topic
 #define NEXT_HEARTBEAT_VAR "heartbeat"         // Nextion Heartbeat global variable
 
-// Nextion Serial pins
+// Nextion Serial configuration
+#define NEXTION_SERIAL Serial1
+#define NEXTION_BAUD 115200
 #define RXDN 19
 #define TXDN 21
 

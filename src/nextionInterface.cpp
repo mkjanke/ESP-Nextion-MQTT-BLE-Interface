@@ -1,7 +1,8 @@
 #include "nextionInterface.h"
 
-  myNextionInterface::myNextionInterface(HardwareSerial& serial) {
+  myNextionInterface::myNextionInterface(HardwareSerial& serial, unsigned long baud) {
     _serial = &serial;
+    _baud = baud;
 
     // Initialize semaphores
     _xSerialWriteSemaphore = xSemaphoreCreateBinary();
@@ -11,10 +12,10 @@
     xSemaphoreGive(_xSerialReadSemaphore);
   }
 
-  void myNextionInterface::begin(unsigned long baud) {
+  void myNextionInterface::begin() {
     sLog.send("Starting myNex", true);
     vTaskDelay(100 / portTICK_PERIOD_MS);
-    _serial->begin(baud,SERIAL_8N1, RXDN, TXDN);
+    _serial->begin(_baud, SERIAL_8N1, RXDN, TXDN);
 
     vTaskDelay(400 / portTICK_PERIOD_MS); //Pause for effect
     flushReads();

@@ -47,12 +47,11 @@ void heartBeat(void* parameter) {
     myNex.writeNum("heartbeat", 1);
 
     char buffer[48];
-    snprintf(buffer, sizeof(buffer), "N:%ib\\rH:%ib\\rW:%ib\\rH:%i,%i",
+    snprintf(buffer, sizeof(buffer), "N:%ib\\rH:%ib\\rW:%ib\\rH:%i",
              uxTaskGetStackHighWaterMark(xhandleNextionHandle),
              uxTaskGetStackHighWaterMark(xheartBeatHandle),
              uxTaskGetStackHighWaterMark(xcheckWiFiHandle),
-             esp_get_minimum_free_heap_size(),
-             heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+             esp_get_minimum_free_heap_size());
 
     myNex.writeStr(NEXT_ESPOUT_WIDGET, buffer);
 
