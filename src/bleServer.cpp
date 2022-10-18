@@ -170,6 +170,7 @@ void bleInterface::begin() {
 
   pService->start();
   pAdvertising = pServer->getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID); 
 
   startAdvertising();
 

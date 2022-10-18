@@ -41,14 +41,12 @@
 
   // Thread safe writes (I think...)
   void myNextionInterface::writeNum(const String& _componentName, uint32_t _val) {
-    sLog.send((String)"writeNum: " + _componentName + ", " + _val);
+    String _command = _componentName + "=" +_val;
+    sLog.send("writeNum: " + _command);
     if(_xSerialWriteSemaphore != NULL ){
       if (xSemaphoreTake(_xSerialWriteSemaphore, 100 / portTICK_PERIOD_MS) ==
           pdTRUE) {
-        _serial->print(_componentName);
-        _serial->print("=");
-        _serial->print(_val);
-        _serial->print(_cmdTerminator);
+        _serial->print(_command + _cmdTerminator);
         xSemaphoreGive(_xSerialWriteSemaphore);
       } else {
         sLog.send("writeNum Semaphore fail");
@@ -57,15 +55,12 @@
   } //writeNum()
 
   void myNextionInterface::writeStr(const String& command, const String& txt) {
-    sLog.send("writeStr: " + command + ", " + txt);
+    String _command = command + "=\"" + txt + "\"";
+    sLog.send("writeStr: " + _command);
     if(_xSerialWriteSemaphore != NULL ){
       if (xSemaphoreTake(_xSerialWriteSemaphore, 100 / portTICK_PERIOD_MS) ==
           pdTRUE) {
-        _serial->print(command);
-        _serial->print("=\"");
-        _serial->print(txt);
-        _serial->print("\"");
-        _serial->print(_cmdTerminator);
+        _serial->print(_command + _cmdTerminator);
         xSemaphoreGive(_xSerialWriteSemaphore);
       } else {
         sLog.send("writeNum Semaphore fail");
@@ -79,8 +74,7 @@
       if(_xSerialWriteSemaphore != NULL ){
         if (xSemaphoreTake(_xSerialWriteSemaphore, 100 / portTICK_PERIOD_MS) ==
             pdTRUE) {
-          _serial->print(command);
-          _serial->print(_cmdTerminator);
+          _serial->print(command + _cmdTerminator);
           xSemaphoreGive(_xSerialWriteSemaphore);
         } else {
           sLog.send("writeCmd Semaphore fail");

@@ -13,8 +13,8 @@ void Logger::init(){
   server(SYSLOG_HOST, SYSLOG_PORT);
   deviceHostname(DEVICE_NAME);
   defaultPriority(LOG_INFO);
-  Serial.begin(115200);
-  setSerialPrint(true);
+  // Serial.begin(115200);
+  setSerialPrint(false);
 
   _xLogSemaphore = xSemaphoreCreateBinary();
   xSemaphoreGive(_xLogSemaphore);
